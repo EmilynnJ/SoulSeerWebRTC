@@ -1,157 +1,100 @@
-require('dotenv').config();
 const express = require('express');
 const router = express.Router();
 
-// Charge for session billing
-router.post('/charge', async (req, res) => {
+// Get billing info for session
+router.get('/session/:sessionId', async (req, res) => {
   try {
-    const {
+    const { sessionId } = req.params;
+    
+    // Basic billing calculation
+    const sessionStart = req.query.startTime || Date.now();
+    const currentTime = Date.now();
+    const durationMs = currentTime - sessionStart;
+    const totalMinutes = Math.floor(durationMs / (1000 * 60));
+    const rate = parseFloat(req.query.rate) || 3.99; // Default $3.99/min
+    const amountCharged = (totalMinutes * rate).toFixed(2);
+    
+    res.json({
+      success: true,
       sessionId,
-      clientId,
-      readerId,
-      clientStripeCustomerId,
-      readerStripeAccountId,
+      totalMinutes,
       rate,
-      billingType = 'per_minute',
-      duration
-    } = req.body;
+      amountCharged: parseFloat(amountCharged),
+      status: 'active',
+      currency: 'USD'
+    });
+  } catch (error) {
+    console.error('Error getting billing info:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get billing info' 
+    });
+  }
+});
 
-    if (!sessionId || !clientId || !readerId || !rate) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: sessionId, clientId, readerId, rate' 
+// Calculate final billing for completed session
+router.post('/session/:sessionId/finalize', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { startTime, endTime, rate } = req.body;
+    
+    if (!startTime || !endTime) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing startTime or endTime'
       });
     }
-
-    console.log(`💳 Starting billing for session ${sessionId}`);
-
-    const billingResult = await req.billingEngine.startSession({
+    
+    const durationMs = endTime - startTime;
+    const totalMinutes = Math.ceil(durationMs / (1000 * 60)); // Round up minutes
+    const sessionRate = parseFloat(rate) || 3.99;
+    const amountCharged = (totalMinutes * sessionRate).toFixed(2);
+    
+    res.json({
+      success: true,
       sessionId,
-      clientId,
-      readerId,
-      clientStripeCustomerId,
-      readerStripeAccountId,
-      rate: parseFloat(rate),
-      billingType,
-      duration: duration ? parseInt(duration) : null
+      totalMinutes,
+      rate: sessionRate,
+      amountCharged: parseFloat(amountCharged),
+      status: 'completed',
+      currency: 'USD',
+      billingDetails: {
+        startTime,
+        endTime,
+        durationMs,
+        ratePerMinute: sessionRate
+      }
     });
-
-    res.json({
-      success: true,
-      billing: billingResult,
-      message: `Billing started for session ${sessionId}`
-    });
-
   } catch (error) {
-    console.error('Error starting billing:', error);
+    console.error('Error finalizing billing:', error);
     res.status(500).json({ 
-      error: 'Failed to start billing',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      success: false,
+      error: 'Failed to finalize billing' 
     });
   }
 });
 
-// End billing for a session
-router.post('/end', async (req, res) => {
+// Get billing summary for user
+router.get('/user/:userId/summary', async (req, res) => {
   try {
-    const { sessionId, reason = 'completed' } = req.body;
-
-    if (!sessionId) {
-      return res.status(400).json({ error: 'Session ID is required' });
-    }
-
-    const billingResult = await req.billingEngine.endSession(sessionId, reason);
-
+    const { userId } = req.params;
+    
+    // This would typically query your database for user's billing history
     res.json({
       success: true,
-      billing: billingResult,
-      message: `Billing ended for session ${sessionId}`
+      userId,
+      totalSessions: 0,
+      totalAmount: 0.00,
+      averageSessionLength: 0,
+      currency: 'USD'
     });
-
   } catch (error) {
-    console.error('Error ending billing:', error);
+    console.error('Error getting billing summary:', error);
     res.status(500).json({ 
-      error: 'Failed to end billing',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      success: false,
+      error: 'Failed to get billing summary' 
     });
   }
 });
 
-// Process gift payment
-router.post('/gift', async (req, res) => {
-  try {
-    const {
-      streamId,
-      senderId,
-      receiverId,
-      giftType,
-      amount,
-      senderStripeCustomerId,
-      receiverStripeAccountId,
-      message = ''
-    } = req.body;
-
-    if (!streamId || !senderId || !receiverId || !giftType || !amount) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: streamId, senderId, receiverId, giftType, amount' 
-      });
-    }
-
-    const giftResult = await req.billingEngine.processGift({
-      streamId,
-      senderId,
-      receiverId,
-      giftType,
-      amount: parseFloat(amount),
-      senderStripeCustomerId,
-      receiverStripeAccountId,
-      message
-    });
-
-    res.json({
-      success: true,
-      gift: giftResult,
-      message: `Gift processed: ${giftType} ($${amount})`
-    });
-
-  } catch (error) {
-    console.error('Error processing gift:', error);
-    res.status(500).json({ 
-      error: 'Failed to process gift',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// Get billing statistics
-router.get('/stats', async (req, res) => {
-  try {
-    const stats = await req.billingEngine.getStats();
-    res.json({
-      success: true,
-      stats
-    });
-  } catch (error) {
-    console.error('Error getting billing stats:', error);
-    res.status(500).json({ 
-      error: 'Failed to get billing stats',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// Webhook endpoint for Stripe events
-router.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SIGNING_SECRET;
-
-  let event;
-
-  try {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  console
+module.exports = router;
