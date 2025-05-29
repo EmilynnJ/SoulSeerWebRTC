@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoulSeer Live Stream</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .stream-area {
+      flex: 1;
+      position: relative;
+      background: #1a1a1a;
+    }
+
+    .main-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+    }
+
+    .local-video {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 200px;
+      height: 150px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 2px solid #667eea;
+      background: #333;
+      display: none;
+    }
+
+    .stream-info {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+      min-width: 200px;
+    }
+
+    .viewer-count {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    .stream-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+    }
+
+    .control-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: all 0.3s ease;
+      background: #667eea;
+    }
+
+    .control-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .sidebar {
+      width: 350px;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .gift-section {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    .gift-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .gift-btn {
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .gift-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .chat-area {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      max-height: 300px;
+    }
+
+    .chat-message {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 8px 12px;
+      border-radius: 15px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .gift-animation {
+      background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+      border: 2px solid #ff8e8e;
+      animation: giftPulse 1s ease-in-out;
+    }
+
+    @keyframes giftPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(255, 107, 107, 0.5); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="stream-area">
+      <video id="streamVideo" class="main-video" autoplay playsinline></video>
+      <video id="localVideo" class="local-video" autoplay playsinline muted></video>
+      
+      <div class="stream-info">
+        <div class="viewer-count">
+          👥 <span id="viewerCount">0</span> viewers
+        </div>
+        <div class="stream-title" id="streamTitle">Live Reading Stream</div>
+        <div id="streamCategory">General</div>
+      </div>
+
+      <div class="controls" id="streamerControls" style="display: none;">
+        <button id="muteBtn" class="control-btn" title="Mute/Unmute">🎤</button>
+        <button id="videoBtn" class="control-btn" title="Camera On/Off">📹</button>
+        <button id="endStreamBtn" class="control-btn" title="End Stream" style="background: #ff3838;">📡</button>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="gift-section" id="giftSection">
+        <h4>Send a Gift</h4>
+        <div class="gift-options">
+          <button class="gift-btn" data-gift="rose" data-amount="1">🌹 Rose<br>$1</button>
+          <button class="gift-btn" data-gift="heart" data-amount="2">❤️ Heart<br>$2</button>
+          <button class="gift-btn" data-gift="star" data-amount="5">⭐ Star<br>$5</button>
+          <button class="gift-btn" data-gift="crown" data-amount="10">👑 Crown<br>$10</button>
+          <button class="gift-btn" data-gift="diamond" data-amount="25">💎 Diamond<br>$25</button>
+          <button class="gift-btn" data-gift="rocket" data-amount="50">🚀 Rocket<br>$50</button>
+        </div>
+      </div>
+
+      <div class="chat-area">
+        <h4>Live Chat</h4>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input">
+          <input type="text" id="chatInput" placeholder="Type a message..." maxlength="200">
+          <button id="sendChatBtn">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ICE server configuration
+    const ICE_SERVERS = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      {
+        urls: 'turn:relay1.expressturn.com:3480',
+        username: 'efC31HLVNPO2ESV7EI',
+        credential: 'p3iL2wVPAhMAlmgD'
+      }
+    ];
+
+    class LiveStream {
+      constructor() {
+        this.localStream = null;
+        this.remoteStream = null;
+        this.peerConnection = null;
+        this.socket = null;
+        this.isStreamer = false;
+        this.streamId = window.location.pathname.split('/').pop();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        this.userId = urlParams.get('userId') || 'viewer_' + Math.random().toString(36).substr(2, 9);
+        this.role = urlParams.get('role') || 'viewer';
+        this.userName = urlParams.get('name') || 'Anonymous';
+
+        this.isStreamer = this.role === 'streamer';
+        
+        this.initializeElements();
+        this.setupEventListeners();
+        this.initialize();
+      }
+
+      initializeElements() {
+        this.elements = {
+          streamVideo: document.getElementById('streamVideo'),
+          localVideo: document.getElementById('localVideo'),
+          viewerCount: document.getElementById('viewerCount'),
+          streamTitle: document.getElementById('streamTitle'),
+          streamCategory: document.getElementById('streamCategory'),
+          streamerControls: document.getElementById('streamerControls'),
+          giftSection: document.getElementById('giftSection'),
+          chatMessages: document.getElementById('chatMessages'),
+          chatInput: document.getElementById('chatInput'),
+          sendChatBtn: document.getElementById('sendChatBtn'),
+          muteBtn: document.getElementById('muteBtn'),
+          videoBtn: document.getElementById('videoBtn'),
+          endStreamBtn: document.getElementById('endStreamBtn')
+        };
+      }
+
+      setupEventListeners() {
+        // Gift buttons
+        document.querySelectorAll('.gift-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const giftType = e.target.dataset.gift;
+            const amount = parseFloat(e.target.dataset.amount);
+            this.sendGift(giftType, amount);
+          });
+        });
+
+        // Chat
+        this.elements.sendChatBtn.addEventListener('click', () => this.sendChatMessage());
+        this.elements.chatInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') this.sendChatMessage();
+        });
+
+        // Streamer controls
+        if (this.isStreamer) {
+          this.elements.muteBtn.addEventListener('click', () => this.toggleMute());
+          this.elements.videoBtn.addEventListener('click', () => this.toggleVideo());
+          this.elements.endStreamBtn.addEventListener('click', () => this.endStream());
+        }
+      }
+
+      async initialize() {
+        try {
+          console.log(`Initializing live stream: ${this.streamId} as ${this.role}`);
+          
+          if (this.isStreamer) {
+            this.elements.streamerControls.style.display = 'flex';
+            this.elements.localVideo.style.display = 'block';
+            this.elements.giftSection.style.display = 'none';
+            await this.startStreaming();
+          } else {
+            await this.joinStream();
+          }
+
+          await this.connectSignaling();
+          this.joinRoom();
+
+        } catch (error) {
+          console.error('Initialization error:', error);
+          this.showError('Failed to initialize stream: ' + error.message);
+        }
+      }
+
+      async startStreaming() {
+        try {
+          this.localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+          });
+          this.elements.localVideo.srcObject = this.localStream;
+          this.createPeerConnection();
+        } catch (error) {
+          console.error('Error starting stream:', error);
+          throw error;
+        }
+      }
+
+      async joinStream() {
+        try {
+          this.createPeerConnection();
+        } catch (error) {
+          console.error('Error joining stream:', error);
+          throw error;
+        }
+      }
+
+      createPeerConnection() {
+        this.peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+        if (this.localStream) {
+          this.localStream.getTracks().forEach(track => {
+            this.peerConnection.addTrack(track, this.localStream);
+          });
+        }
+
+        this.peerConnection.ontrack = (event) => {
+          console.log('Remote track received');
+          this.remoteStream = event.streams[0];
+          this.elements.streamVideo.srcObject = this.remoteStream;
+        };
+
+        this.peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            this.sendSignalingMessage('ice-candidate', event.candidate);
+          }
+        };
+      }
+
+      async connectSignaling() {
+        return new Promise((resolve, reject) => {
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const wsUrl = `${protocol}//${window.location.host}/ws`;
+          
+          this.socket = new WebSocket(wsUrl);
+
+          this.socket.onopen = () => {
+            console.log('Signaling connection established');
+            resolve();
+          };
+
+          this.socket.onmessage = (event) => {
+            this.handleSignalingMessage(JSON.parse(event.data));
+          };
+
+          this.socket.onerror = reject;
+        });
+      }
+
+      joinRoom() {
+        this.sendSignalingMessage('stream-join', {
+          userId: this.userId,
+          role: this.role,
+          userName: this.userName,
+          roomType: 'stream'
+        });
+      }
+
+      sendSignalingMessage(type, payload) {
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+          this.socket.send(JSON.stringify({
+            type,
+            roomId: this.streamId,
+            userId: this.userId,
+            payload
+          }));
+        }
+      }
+
+      async handleSignalingMessage(message) {
+        const { type, payload } = message;
+
+        switch (type) {
+          case 'room-joined':
+            console.log('Joined stream successfully');
+            break;
+
+          case 'viewer-count-update':
+            this.elements.viewerCount.textContent = payload.count;
+            break;
+
+          case 'participant-joined':
+            if (payload.role === 'viewer' && this.isStreamer) {
+              await this.createOffer();
+            }
+            break;
+
+          case 'webrtc-offer':
+            await this.handleOffer(payload);
+            break;
+
+          case 'webrtc-answer':
+            await this.handleAnswer(payload);
+            break;
+
+          case 'ice-candidate':
+            await this.handleIceCandidate(payload);
+            break;
+
+          case 'chat-message':
+            this.displayChatMessage(payload);
+            break;
+
+          case 'gift-animation':
+            this.displayGiftAnimation(payload);
+            break;
+        }
+      }
+
+      async createOffer() {
+        try {
+          const offer = await this.peerConnection.createOffer();
+          await this.peerConnection.setLocalDescription(offer);
+          this.sendSignalingMessage('webrtc-offer', offer);
+        } catch (error) {
+          console.error('Error creating offer:', error);
+        }
+      }
+
+      async handleOffer(offer) {
+        try {
+          await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+          const answer = await this.peerConnection.createAnswer();
+          await this.peerConnection.setLocalDescription(answer);
+          this.sendSignalingMessage('webrtc-answer', answer);
+        } catch (error) {
+          console.error('Error handling offer:', error);
+        }
+      }
+
+      async handleAnswer(answer) {
+        try {
+          await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        } catch (error) {
+          console.error('Error handling answer:', error);
+        }
+      }
+
+      async handleIceCandidate(candidate) {
+        try {
+          await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (error) {
+          console.error('Error adding ICE candidate:', error);
+        }
+      }
+
+      sendGift(giftType, amount) {
+        if (!this.isStreamer) {
+          // In a real implementation, you'd integrate with Stripe here
+          console.log(`Sending gift: ${giftType} ($${amount})`);
+          
+          this.sendSignalingMessage('gift-animation', {
+            giftType,
+            amount,
+            senderId: this.userId,
+            senderName: this.userName,
+            message: '',
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+
+      displayGiftAnimation(payload) {
+        const giftMessage = document.createElement('div');
+        giftMessage.className = 'chat-message gift-animation';
+        giftMessage.innerHTML = `
+          <strong>🎁 ${payload.senderName}</strong> sent a <strong>${payload.giftType}</strong> ($${payload.amount})!
+        `;
+        
+        this.elements.chatMessages.appendChild(giftMessage);
+        this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
+
+        // Remove animation class after animation completes
+        setTimeout(() => {
+          giftMessage.classList.remove('gift-animation');
+        }, 1000);
+      }
+
+      sendChatMessage() {
+        const message = this.elements.chatInput.value.trim();
+        if (message) {
+          this.sendSignalingMessage('chat-message', {
+            message,
+            userId: this.userId,
+            userName: this.userName,
+            role: this.role,
+            timestamp: new Date().toISOString()
+          });
+          this.elements.chatInput.value = '';
+        }
+      }
+
+      displayChatMessage(payload) {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'chat-message';
+        
+        const time = new Date(payload.timestamp).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        messageElement.innerHTML = `
+          <strong>${payload.userName || payload.userId}</strong>
+          <span style="font-size: 12px; opacity: 0.7;">${time}</span><br>
+          ${payload.message}
+        `;
+        
+        this.elements.chatMessages.appendChild(messageElement);
+        this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
+      }
+
+      toggleMute() {
+        if (this.localStream && this.isStreamer) {
+          const audioTracks = this.localStream.getAudioTracks();
+          audioTracks.forEach(track => {
+            track.enabled = !track.enabled;
+          });
+          this.elements.muteBtn.textContent = audioTracks[0].enabled ? '🎤' : '🔇';
+        }
+      }
+
+      toggleVideo() {
+        if (this.localStream && this.isStreamer) {
+          const videoTracks = this.localStream.getVideoTracks();
+          videoTracks.forEach(track => {
+            track.enabled = !track.enabled;
+          });
+          this.elements.videoBtn.textContent = videoTracks[0].enabled ? '📹' : '📵';
+        }
+      }
+
+      endStream() {
+        if (this.isStreamer && confirm('Are you sure you want to end this stream?')) {
+          this.sendSignalingMessage('leave-room', {});
+          this.cleanup();
+          window.close();
+        }
+      }
+
+      cleanup() {
+        if (this.localStream) {
+          this.localStream.getTracks().forEach(track => track.stop());
+        }
+        if (this.peerConnection) {
+          this.peerConnection.close();
+        }
+        if (this.socket) {
+          this.socket.close();
+        }
+      }
+
+      showError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(220, 53, 69, 0.9);
+          color: white;
+          padding: 15px 20px;
+          border-radius: 5px;
+          z-index: 1000;
+        `;
+        errorDiv.textContent = message;
+        document.body.appendChild(errorDiv);
+        
+        setTimeout(() => {
+          document.body.removeChild(errorDiv);
+        }, 5000);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      new LiveStream();
+    });
+  </script>
+</body>
+</html>
