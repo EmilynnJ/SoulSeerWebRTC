@@ -1,26 +1,38 @@
 {
   "name": "soulseer-webrtc-service",
   "version": "1.0.0",
-  "description": "Standalone WebRTC service for SoulSeer psychic readings",
+  "description": "Standalone WebRTC service for SoulSeer psychic reading platform",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "init-db": "node database/init-db.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [
+    "webrtc",
+    "video-chat",
+    "psychic-reading",
+    "real-time"
+  ],
+  "author": "SoulSeer",
+  "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
-    "ws": "^8.13.0",
-    "pg": "^8.11.0",
-    "stripe": "^12.9.0",
+    "socket.io": "^4.7.2",
     "cors": "^2.8.5",
-    "uuid": "^9.0.0",
-    "jsonwebtoken": "^9.0.0",
-    "bcryptjs": "^2.4.3",
     "dotenv": "^16.3.1",
-    "node-cron": "^3.0.2"
+    "uuid": "^9.0.0",
+    "pg": "^8.11.3",
+    "node-appwrite": "^12.0.1",
+    "node-fetch": "^2.7.0",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }
